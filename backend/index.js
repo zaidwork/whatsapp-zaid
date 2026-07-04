@@ -32,21 +32,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use('/api/auth', authRouter);
 app.use('/api/chat', chatRouter);
 
-// استضافة ملفات الفرونت اند المبنية استاتيكياً
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+import fs from 'fs';
 
 // مسار فحص حالة السيرفر
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date() });
 });
 
-// توجيه باقي المسارات للفرونت اند لدعم React Router
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
-    return next();
-  }
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
+const distPath = path.join(__dirname, '../frontend/dist');
+
+if (fs.existsSync(distPath)) {
+  // استضافة ملفات الفرونت اند المبنية استاتيكياً (في وضع التشغيل المحلي المدمج)
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  // في وضع التشغيل المنفصل أونلاين (مثل الاستضافة على Render)
+  app.get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'WhatsApp E2EE Backend Server is running.' });
+  });
+}
 
 // اختبار الاتصال بقاعدة البيانات عند بدء التشغيل
 async function testDbConnection() {
