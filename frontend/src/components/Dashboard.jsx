@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, MessageSquare, UserPlus, Check, X, Send, 
   Phone, Video, ShieldCheck, LogOut, CheckCheck, 
-  Image, Smile, User, Clock, Radio, PlusCircle, ArrowRight
+  Image, Smile, User, Clock, Radio, PlusCircle, ArrowRight, RefreshCw
 } from 'lucide-react';
 import { importPrivateKey, deriveSharedKey, encryptMessage, decryptMessage, isSecureContext } from '../crypto';
 
@@ -36,6 +36,7 @@ export default function Dashboard({ token, myUser, socket, serverUrl, onLogout, 
   const [showStatusPanel, setShowStatusPanel] = useState(false);
   const [statuses, setStatuses] = useState([]);
   const [statusText, setStatusText] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -152,6 +153,24 @@ export default function Dashboard({ token, myUser, socket, serverUrl, onLogout, 
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 80);
+  };
+
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await loadContacts();
+      await loadPendingRequests();
+      if (activeChat) {
+        await selectChat(activeChat);
+      }
+    } catch (err) {
+      console.error("Manual refresh error:", err);
+    } finally {
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
   };
 
   // 3. جلب قائمة جهات الاتصال النشطة
@@ -504,6 +523,17 @@ export default function Dashboard({ token, myUser, socket, serverUrl, onLogout, 
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={handleManualRefresh} 
+              style={{ 
+                ...styles.iconBtn, 
+                animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' 
+              }}
+              title="تحديث فوري"
+              id="refresh-data-btn"
+            >
+              <RefreshCw size={20} color={isRefreshing ? '#00a884' : 'var(--text-secondary)'} />
+            </button>
             <button 
               onClick={() => setShowStatusPanel(!showStatusPanel)} 
               style={{ ...styles.iconBtn, backgroundColor: showStatusPanel ? 'rgba(0,168,132,0.2)' : 'transparent' }}

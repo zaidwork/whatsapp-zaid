@@ -70,7 +70,8 @@ export default function App() {
     }
 
     const newSocket = io(SERVER_URL, {
-      auth: { token }
+      auth: { token },
+      transports: ['websocket']
     });
 
     setSocket(newSocket);

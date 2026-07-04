@@ -209,3 +209,8 @@ button:active {
   border: 2px solid var(--primary);
   border-radius: 50%;
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
