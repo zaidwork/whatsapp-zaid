@@ -4,8 +4,19 @@ import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import CallModal from './components/CallModal';
 
-// جلب عنوان السيرفر من متغيرات البيئة للتوافق مع Netlify أو الاستعانة بالمنفذ المحلي الافتراضي
-const SERVER_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000`;
+// جلب عنوان السيرفر من متغيرات البيئة أو التحويل التلقائي لرابط Render عند التشغيل على Netlify
+const getBackendUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // تحويل ذكي تلقائي لرابط الباك اند الخاص بك على Render عند تشغيل الموقع على Netlify
+  if (window.location.hostname.includes('netlify.app')) {
+    return 'https://whatsapp-zaid.onrender.com';
+  }
+  return `http://${window.location.hostname}:5000`;
+};
+
+const SERVER_URL = getBackendUrl();
 
 // خوادم STUN العامة من غوغل لحل مشاكل الـ NAT والاتصال عبر الإنترنت
 const rtcConfig = {
