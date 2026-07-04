@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { importPrivateKey, deriveSharedKey, encryptMessage, decryptMessage, isSecureContext } from '../crypto';
 
-export default function Dashboard({ token, myUser, socket, serverUrl, onLogout, onInitiateCall }) {
+export default function Dashboard({ token, myUser, socket, socketConnected, serverUrl, onLogout, onInitiateCall }) {
   const [activeChat, setActiveChat] = useState(null); // المحادثة النشطة حالياً
   const [chats, setChats] = useState([]); // قائمة المحادثات النشطة/جهات الاتصال
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -517,9 +517,27 @@ export default function Dashboard({ token, myUser, socket, serverUrl, onLogout, 
             <div style={styles.avatar}>
               <User size={20} color="white" />
             </div>
-            <div>
+            <div style={{ minWidth: '0', flex: 1, marginRight: '8px' }}>
               <h3 style={styles.profileName}>{myUser.name}</h3>
-              <p style={styles.profilePhone}>{myUser.phone_number}</p>
+              <div style={{ display: 'flex', alignItems: 'center', marginTop: '2px' }}>
+                <div style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  backgroundColor: socketConnected ? '#00a884' : '#ff9f1c',
+                  marginLeft: '5px',
+                  flexShrink: 0
+                }} />
+                <p style={{ 
+                  fontSize: '11px', 
+                  color: socketConnected ? '#00a884' : '#ff9f1c',
+                  fontWeight: '600',
+                  margin: 0,
+                  padding: 0
+                }}>
+                  {socketConnected ? 'متصل بالشبكة' : 'جاري الاتصال...'}
+                </p>
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>

@@ -4,13 +4,13 @@ import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import CallModal from './components/CallModal';
 
-// جلب عنوان السيرفر من متغيرات البيئة أو التحويل التلقائي لرابط Render عند التشغيل على Netlify
+// جلب عنوان السيرفر من متغيرات البيئة أو التحويل التلقائي لرابط Render عند التشغيل أونلاين
 const getBackendUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // تحويل ذكي تلقائي لرابط الباك اند الخاص بك على Render عند تشغيل الموقع على Netlify
-  if (window.location.hostname.includes('netlify.app')) {
+  // إذا كان الموقع يعمل عبر بروتوكول آمن HTTPS وليس محلياً، نربطه تلقائياً برابط الـ Render الخاص بك
+  if (window.location.protocol === 'https:' && !window.location.hostname.includes('localhost')) {
     return 'https://whatsapp-zaid.onrender.com';
   }
   return `http://${window.location.hostname}:5000`;
@@ -48,6 +48,8 @@ export default function App() {
     offer: null
   });
 
+  const [socketConnected, setSocketConnected] = useState(false);
+
   // 1. استرجاع معلومات المستخدم الحالي
   useEffect(() => {
     if (token) {
@@ -59,22 +61,34 @@ export default function App() {
     }
   }, [token]);
 
-  // 2. إعداد اتصال الـ WebSockets واستقبال إشارات WebRTC
+  // 2. إعداد اتصال الـ WebSockets واستقبل إشارات WebRTC
   useEffect(() => {
     if (!token) {
       if (socket) {
         socket.disconnect();
         setSocket(null);
+        setSocketConnected(false);
       }
       return;
     }
 
+    // السماح بكل من polling و websocket لضمان استقرار الاتصال تحت أي جدار حماية
     const newSocket = io(SERVER_URL, {
       auth: { token },
-      transports: ['websocket']
+      transports: ['polling', 'websocket']
     });
 
     setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected successfully!');
+      setSocketConnected(true);
+    });
+
+    newSocket.on('disconnect', () => {
+      console.warn('❌ Socket disconnected!');
+      setSocketConnected(false);
+    });
 
     // استقبال رنين مكالمة واردة (Incoming Call Signal)
     newSocket.on('incoming_call', (data) => {
@@ -346,6 +360,7 @@ export default function App() {
         token={token} 
         myUser={user} 
         socket={socket} 
+        socketConnected={socketConnected}
         serverUrl={SERVER_URL} 
         onLogout={handleLogout}
         onInitiateCall={initiateCall}
