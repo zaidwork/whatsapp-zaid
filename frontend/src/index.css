@@ -1,0 +1,211 @@
+/* استيراد خط "Cairo" وتنسيقات غوغل الفاخرة للغة العربية */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* نظام الألوان - الوضع الداكن الافتراضي (Premium Dark Mode) */
+  --bg-main: #0b141a;
+  --bg-sidebar: #111b21;
+  --bg-chat: #0b141a;
+  --bg-glass: rgba(17, 27, 33, 0.75);
+  --border-color: rgba(255, 255, 255, 0.08);
+  
+  --primary: #00a884;
+  --primary-hover: #008f72;
+  --primary-glow: rgba(0, 168, 132, 0.35);
+  
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --text-muted: #667781;
+  
+  --bubble-outgoing: #005c4b;
+  --bubble-incoming: #202c33;
+  --bubble-text: #e9edef;
+  
+  --accent-call: #00a884;
+  --accent-reject: #ea0038;
+  
+  --font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  --transition: all 0.15s cubic-bezier(0, 0, 0.2, 1);
+  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --radius: 16px;
+}
+
+/* الوضع الفاتح الاختياري (Light Mode) */
+[data-theme="light"] {
+  --bg-main: #efeae2;
+  --bg-sidebar: #ffffff;
+  --bg-chat: #efeae2;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --border-color: rgba(0, 0, 0, 0.08);
+  
+  --text-primary: #111b21;
+  --text-secondary: #3b4a54;
+  --text-muted: #667781;
+  
+  --bubble-outgoing: #d9fdd3;
+  --bubble-incoming: #ffffff;
+  --bubble-text: #111b21;
+  
+  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  user-select: none;
+}
+
+body, html {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  height: 100dvh; /* يدعم الهواتف المحمولة والـ dbar بدقة */
+  width: 100vw;
+  overflow: hidden;
+  direction: rtl; /* اتجاه الكتابة من اليمين لليوم يدعم العربية */
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* التمرير المخصص (Custom Scrollbar) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* تأثيرات الزجاج والمؤثرات البصرية (Glassmorphism & VFX) */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+}
+
+/* الحركات الدقيقة (Micro-animations) */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 168, 132, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 168, 132, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 168, 132, 0); }
+}
+
+@keyframes pulse-ring-red {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 0, 56, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(234, 0, 56, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(234, 0, 56, 0); }
+}
+
+@keyframes typing-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.18s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.18s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.pulse-primary {
+  animation: pulse-ring 2s infinite;
+}
+
+.pulse-danger {
+  animation: pulse-ring-red 2s infinite;
+}
+
+/* نقاط الكتابة المتكررة */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  display: inline-block;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* أزرار الإدخال والتحكم */
+input, button, textarea {
+  outline: none;
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+/* تنسيق عام لفقاعات المحادثة */
+.msg-bubble {
+  max-width: 65%;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  position: relative;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.msg-outgoing {
+  background-color: var(--bubble-outgoing);
+  align-self: flex-start; /* لأن الاتجاه RTL، المرسل من اليمين للجهة المقابلة */
+  border-top-right-radius: 2px;
+  color: var(--bubble-text);
+  margin-right: auto; /* تذهب لليسار بالنسبة للـ Flexbox */
+}
+
+.msg-incoming {
+  background-color: var(--bubble-incoming);
+  align-self: flex-end;
+  border-top-left-radius: 2px;
+  color: var(--bubble-text);
+  margin-left: auto; /* تذهب لليمين */
+}
+
+.status-ring {
+  padding: 2px;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+}

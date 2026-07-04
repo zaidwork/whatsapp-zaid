@@ -1,0 +1,10 @@
+{
+  "name": "whatsapp-clone-root",
+  "version": "1.0.0",
+  "description": "WhatsApp Clone Root Manager",
+  "scripts": {
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "dev": "npx -y concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+  }
+}
