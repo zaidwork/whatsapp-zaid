@@ -166,7 +166,7 @@ router.get('/contacts', authenticateToken, async (req, res) => {
     const chats = [];
     for (const row of result.rows) {
       const lastMsgResult = await db.execute({
-        sql: `SELECT encrypted_content, encryption_iv, created_at, sender_id, status 
+        sql: `SELECT encrypted_content, encryption_iv, message_type, created_at, sender_id, status 
               FROM messages 
               WHERE conversation_id = ? 
               ORDER BY created_at DESC LIMIT 1`,

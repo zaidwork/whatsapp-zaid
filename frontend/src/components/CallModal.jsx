@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, PhoneOff, Video, Mic, MicOff, VideoOff } from 'lucide-react';
+import { Phone, PhoneOff, Video, Mic, MicOff, VideoOff, Volume2, VolumeX } from 'lucide-react';
 
 export default function CallModal({ callInfo, localStream, remoteStream, onAccept, onReject, onEndCall }) {
   const { isIncoming, callerName, callType, status } = callInfo;
@@ -40,6 +40,30 @@ export default function CallModal({ callInfo, localStream, remoteStream, onAccep
         track.enabled = !videoActive;
       });
       setVideoActive(!videoActive);
+    }
+  };
+
+  const [speakerActive, setSpeakerActive] = useState(false);
+
+  // تشغيل/إيقاف مكبر الصوت (Speakerphone)
+  const toggleSpeaker = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+      
+      // التبديل بين المخرج الافتراضي للـ earpiece والمخرج الثاني (المكبر)
+      const targetSinkId = speakerActive ? '' : (audioOutputs[1]?.deviceId || audioOutputs[0]?.deviceId || '');
+      
+      const mediaElements = document.querySelectorAll('audio, video');
+      for (const media of mediaElements) {
+        if (typeof media.setSinkId === 'function') {
+          await media.setSinkId(targetSinkId);
+        }
+      }
+      setSpeakerActive(!speakerActive);
+      console.log("Speaker toggled. Active:", !speakerActive);
+    } catch (err) {
+      console.warn("Failed to toggle speaker:", err);
     }
   };
 
@@ -140,14 +164,26 @@ export default function CallModal({ callInfo, localStream, remoteStream, onAccep
                     onClick={toggleMic} 
                     style={{ ...styles.controlBtn, backgroundColor: micActive ? 'rgba(255,255,255,0.1)' : 'rgba(234,0,56,0.2)' }}
                     id="mute-mic-btn"
+                    title={micActive ? "كتم الميكروفون" : "تشغيل الميكروفون"}
                   >
                     {micActive ? <Mic size={20} color="white" /> : <MicOff size={20} color="#ff4d6d" />}
                   </button>
+                  
+                  <button 
+                    onClick={toggleSpeaker} 
+                    style={{ ...styles.controlBtn, backgroundColor: speakerActive ? 'rgba(0,168,132,0.2)' : 'rgba(255,255,255,0.1)' }}
+                    id="toggle-speaker-btn"
+                    title={speakerActive ? "تعطيل مكبر الصوت" : "تشغيل مكبر الصوت"}
+                  >
+                    {speakerActive ? <Volume2 size={20} color="#00a884" /> : <VolumeX size={20} color="white" />}
+                  </button>
+
                   {callType === 'video' && (
                     <button 
                       onClick={toggleVideo} 
                       style={{ ...styles.controlBtn, backgroundColor: videoActive ? 'rgba(255,255,255,0.1)' : 'rgba(234,0,56,0.2)' }}
                       id="toggle-video-btn"
+                      title={videoActive ? "إيقاف الكاميرا" : "تشغيل الكاميرا"}
                     >
                       {videoActive ? <Video size={20} color="white" /> : <VideoOff size={20} color="#ff4d6d" />}
                     </button>

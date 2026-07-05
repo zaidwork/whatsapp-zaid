@@ -188,13 +188,33 @@ export default function App() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("SECURE_CONTEXT_REQUIRED");
     }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: type === 'video'
-    });
-    localStreamRef.current = stream;
-    setLocalStream(stream); // حفظ التدفق المحلي لتمريره للـ Modal
-    return stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: type === 'video'
+      });
+      localStreamRef.current = stream;
+      setLocalStream(stream); // حفظ التدفق المحلي لتمريره للـ Modal
+      return stream;
+    } catch (err) {
+      // التراجع للحصول على الصوت فقط عند فشل الكاميرا أو عدم توفرها بالكامل
+      if (type === 'video') {
+        console.warn("Camera fallback: No camera found or access blocked. Trying audio only.");
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: false
+          });
+          localStreamRef.current = stream;
+          setLocalStream(stream);
+          return stream;
+        } catch (audioErr) {
+          throw audioErr;
+        }
+      } else {
+        throw err;
+      }
+    }
   };
 
   // 4. إنشاء وتهيئة اتصال WebRTC (Setup WebRTC Connection)
@@ -224,16 +244,10 @@ export default function App() {
       const rStream = event.streams[0];
       setRemoteStream(rStream); // حفظ تدفق الطرف الآخر لتمريره لعنصر الفيديو
       
-      if (type === 'audio') {
-        if (!remoteAudioRef.current) {
-          const audio = new Audio();
-          audio.srcObject = rStream;
-          audio.autoplay = true;
-          audio.play().catch(e => console.warn("Autoplay blocked or failed:", e));
-          remoteAudioRef.current = audio;
-        } else {
-          remoteAudioRef.current.srcObject = rStream;
-        }
+      // ربط تدفق الصوت بعنصر الـ audio الموجود في الـ DOM لضمان استمراره في الخلفية وعند قفل الشاشة
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = rStream;
+        remoteAudioRef.current.play().catch(e => console.warn("Remote audio play failed:", e));
       }
     };
 
@@ -353,7 +367,6 @@ export default function App() {
     // إيقاف مشغل الصوت عن بعد
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = null;
-      remoteAudioRef.current = null;
     }
 
     setLocalStream(null);
@@ -386,6 +399,9 @@ export default function App() {
         onLogout={handleLogout}
         onInitiateCall={initiateCall}
       />
+
+      {/* عنصر الصوت مخفي بالـ DOM لتأمين استمرار تشغيل المكالمة عند قفل شاشة الهاتف */}
+      <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
 
       {callInfo.isActive && (
         <CallModal 

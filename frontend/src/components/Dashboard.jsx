@@ -711,7 +711,9 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
                             {chat.last_message ? (
                               chat.last_message.sender_id === myUser.id ? 'أنت: ' : ''
                             ) : ''}
-                            {chat.last_message?.decrypted_content || chat.last_message?.encrypted_content ? (
+                            {chat.last_message?.message_type === 'call_log' ? (
+                              chat.last_message.encrypted_content
+                            ) : chat.last_message?.decrypted_content || chat.last_message?.encrypted_content ? (
                               chat.last_message.decrypted_content || '🔒 رسالة مشفرة'
                             ) : (
                               chat.status
