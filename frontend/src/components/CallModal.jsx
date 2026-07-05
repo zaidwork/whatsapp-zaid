@@ -22,6 +22,7 @@ export default function CallModal({
   useEffect(() => {
     if (localVideoRef.current && localStream && videoActive) {
       localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(err => console.warn("Local video play failed:", err));
     }
   }, [localStream, videoActive, status]);
 
@@ -29,6 +30,7 @@ export default function CallModal({
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(err => console.warn("Remote video play failed:", err));
     }
   }, [remoteStream, status]);
 
@@ -96,6 +98,7 @@ export default function CallModal({
                   ref={remoteVideoRef} 
                   autoPlay 
                   playsInline 
+                  muted 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />
               ) : (

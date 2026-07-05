@@ -57,23 +57,35 @@ export default function App() {
 
   // كتم/تفعيل الصوت لتدفق المكالمة المحلي من الـ Core
   const toggleLocalAudio = () => {
+    console.log("🎤 toggleLocalAudio called. Current state:", localAudioActive);
     if (localStreamRef.current) {
       const nextState = !localAudioActive;
-      localStreamRef.current.getAudioTracks().forEach(track => {
+      const tracks = localStreamRef.current.getAudioTracks();
+      console.log("🎤 Toggling tracks:", tracks);
+      tracks.forEach(track => {
         track.enabled = nextState;
+        console.log(`🎤 Track ${track.id} enabled set to:`, track.enabled);
       });
       setLocalAudioActive(nextState);
+    } else {
+      console.warn("🎤 toggleLocalAudio failed: localStreamRef.current is null!");
     }
   };
 
   // كتم/تفعيل الكاميرا لتدفق المكالمة المحلي من الـ Core
   const toggleLocalVideo = () => {
+    console.log("📹 toggleLocalVideo called. Current state:", localVideoActive);
     if (localStreamRef.current) {
       const nextState = !localVideoActive;
-      localStreamRef.current.getVideoTracks().forEach(track => {
+      const tracks = localStreamRef.current.getVideoTracks();
+      console.log("📹 Toggling tracks:", tracks);
+      tracks.forEach(track => {
         track.enabled = nextState;
+        console.log(`📹 Track ${track.id} enabled set to:`, track.enabled);
       });
       setLocalVideoActive(nextState);
+    } else {
+      console.warn("📹 toggleLocalVideo failed: localStreamRef.current is null!");
     }
   };
 
