@@ -336,7 +336,7 @@ io.on('connection', async (socket) => {
 
   // عند قطع الاتصال (Disconnect)
   socket.on('disconnect', async () => {
-    console.log(`🔌 مستخدم غادر الاتصال: ${username} (${userId})`);
+    console.log(`🔌 مستخدم غادر الاتصال: ${username} (${userId}) | Socket ID: ${socket.id}`);
     
     // إنهاء المكالمة الجارية إن وجدت وحفظ السجل
     const callObj = activeCalls.get(userId);
@@ -351,18 +351,24 @@ io.on('connection', async (socket) => {
       }
     }
 
-    activeConnections.delete(userId);
-    
-    try {
-      await db.execute({
-        sql: 'UPDATE users SET is_online = 0, last_seen = CURRENT_TIMESTAMP WHERE id = ?',
-        args: [userId]
-      });
+    // تأكيد أن السوكيت الذي يتم فصله هو نفس السوكيت النشط حالياً للمستخدم
+    // هذا يمنع حذف الجلسة عند ترقية الاتصال (Transport Upgrade) من polling إلى websocket
+    if (activeConnections.get(userId) === socket.id) {
+      activeConnections.delete(userId);
       
-      // إبلاغ جهات الاتصال أن المستخدم أصبح غير متصل (Offline)
-      broadcastPresence(userId, false);
-    } catch (err) {
-      console.error('Error updating presence offline:', err);
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET is_online = 0, last_seen = CURRENT_TIMESTAMP WHERE id = ?',
+          args: [userId]
+        });
+        
+        // إبلاغ جهات الاتصال أن المستخدم أصبح غير متصل (Offline)
+        broadcastPresence(userId, false);
+      } catch (err) {
+        console.error('Error updating presence offline:', err);
+      }
+    } else {
+      console.log(`ℹ️ تم تجاهل حذف الجلسة للمستخدم ${userId} لأن السوكيت المفصول قديم: ${socket.id}`);
     }
   });
 });
