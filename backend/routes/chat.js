@@ -221,23 +221,24 @@ router.get('/messages/:conversationId', authenticateToken, async (req, res) => {
 // 7. رفع مفاتيح التشفير للمستخدم (Upload E2EE Keys)
 router.post('/keys/upload', authenticateToken, async (req, res) => {
   const userId = req.user.id;
-  const { public_identity_key, public_signed_prekey, prekey_signature, one_time_prekeys } = req.body;
+  const { public_identity_key, public_signed_prekey, prekey_signature, one_time_prekeys, encrypted_private_key } = req.body;
 
   if (!public_identity_key || !public_signed_prekey || !prekey_signature) {
     return res.status(400).json({ error: 'يرجى تقديم مفتاح الهوية والمفتاح الموقع مع التوقيع.' });
   }
 
   try {
-    // إدراج أو تحديث المفاتيح الأساسية
+    // إدراج أو تحديث المفاتيح الأساسية مع المفتاح الخاص المشفر
     await db.execute({
-      sql: `INSERT INTO user_encryption_keys (user_id, public_identity_key, public_signed_prekey, prekey_signature, updated_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      sql: `INSERT INTO user_encryption_keys (user_id, public_identity_key, public_signed_prekey, prekey_signature, encrypted_private_key, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id) DO UPDATE SET 
               public_identity_key = excluded.public_identity_key,
               public_signed_prekey = excluded.public_signed_prekey,
               prekey_signature = excluded.prekey_signature,
+              encrypted_private_key = COALESCE(excluded.encrypted_private_key, user_encryption_keys.encrypted_private_key),
               updated_at = CURRENT_TIMESTAMP`,
-      args: [userId, public_identity_key, public_signed_prekey, prekey_signature]
+      args: [userId, public_identity_key, public_signed_prekey, prekey_signature, encrypted_private_key || null]
     });
 
     // إدراج مفاتيح الاستخدام لمرة واحدة (One-Time Prekeys) إن وجدت

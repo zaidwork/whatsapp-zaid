@@ -1,0 +1,18 @@
+{
+  "short_name": "WhatsApp Secure",
+  "name": "واتساب الشخصي الآمن",
+  "description": "تطبيق محادثة فوري خاص مشفر من الطرف إلى الطرف (E2EE)",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b141a",
+  "theme_color": "#0b141a",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}

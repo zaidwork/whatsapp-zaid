@@ -104,6 +104,13 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // جلب المفتاح الخاص المشفر للمستخدم
+    const keyResult = await db.execute({
+      sql: 'SELECT encrypted_private_key FROM user_encryption_keys WHERE user_id = ?',
+      args: [user.id]
+    });
+    const encrypted_private_key = keyResult.rows.length > 0 ? keyResult.rows[0].encrypted_private_key : null;
+
     res.json({
       message: 'تم تسجيل الدخول بنجاح!',
       token,
@@ -113,7 +120,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         phone_number: user.phone_number,
         avatar_url: user.avatar_url,
-        status: user.status
+        status: user.status,
+        encrypted_private_key
       }
     });
   } catch (err) {
@@ -134,7 +142,21 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'المستخدم غير موجود.' });
     }
 
-    res.json({ user: result.rows[0] });
+    const user = result.rows[0];
+    
+    // جلب المفتاح الخاص المشفر للمستخدم
+    const keyResult = await db.execute({
+      sql: 'SELECT encrypted_private_key FROM user_encryption_keys WHERE user_id = ?',
+      args: [user.id]
+    });
+    const encrypted_private_key = keyResult.rows.length > 0 ? keyResult.rows[0].encrypted_private_key : null;
+
+    res.json({
+      user: {
+        ...user,
+        encrypted_private_key
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: 'حدث خطأ في السيرفر.' });
   }

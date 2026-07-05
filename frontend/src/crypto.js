@@ -202,4 +202,137 @@ export async function decryptMessage(sharedKey, ciphertextBase64, ivBase64) {
     return '🔒 [فشل فك تشفير الرسالة - مشكلة في تبادل المفاتيح]';
   }
 }
+
+// 8. تشفير المفتاح الخاص باستخدام كلمة المرور والبريد الإلكتروني (PBKDF2 + AES-GCM)
+export async function encryptPrivateKeyWithPassword(privateKey, password, email) {
+  if (!isSecureContext) {
+    // وضع التوافق للشبكات المحلية (Insecure fallback)
+    const mockJwk = typeof privateKey === 'string' ? privateKey : JSON.stringify(privateKey);
+    return "insecure_pbkdf2_fallback:" + window.btoa(unescape(encodeURIComponent(mockJwk)));
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const passwordBytes = encoder.encode(password);
+    const saltBytes = encoder.encode(email || 'whatsapp_secure_default_salt');
+
+    // استيراد كلمة المرور كمفتاح PBKDF2 أساسي
+    const baseKey = await window.crypto.subtle.importKey(
+      'raw',
+      passwordBytes,
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+
+    // اشتقاق مفتاح AES-GCM 256
+    const aesKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: saltBytes,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      baseKey,
+      {
+        name: 'AES-GCM',
+        length: 256
+      },
+      false,
+      ['encrypt', 'decrypt']
+    );
+
+    // تجهيز بيانات المفتاح الخاص للتشفير (تصديره أولاً كـ JWK)
+    let jwkString = privateKey;
+    if (typeof privateKey !== 'string') {
+      jwkString = await exportPrivateKey(privateKey);
+    }
+    const dataBytes = encoder.encode(jwkString);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    const encryptedBuffer = await window.crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      aesKey,
+      dataBytes
+    );
+
+    const ciphertextBase64 = arrayBufferToBase64(encryptedBuffer);
+    const ivBase64 = arrayBufferToBase64(iv);
+
+    return `${ivBase64}:${ciphertextBase64}`;
+  } catch (err) {
+    console.error('Password-derived encryption failed:', err);
+    throw err;
+  }
+}
+
+// 9. فك تشفير المفتاح الخاص باستخدام كلمة المرور والبريد الإلكتروني
+export async function decryptPrivateKeyWithPassword(encryptedPrivateKeyString, password, email) {
+  if (!isSecureContext || encryptedPrivateKeyString.startsWith("insecure_pbkdf2_fallback:")) {
+    // فك التشفير في وضع التوافق
+    const base64 = encryptedPrivateKeyString.replace("insecure_pbkdf2_fallback:", "");
+    const decodedJwk = decodeURIComponent(escape(window.atob(base64)));
+    return decodedJwk;
+  }
+
+  try {
+    const parts = encryptedPrivateKeyString.split(':');
+    if (parts.length !== 2) {
+      throw new Error('صيغة المفتاح المشفر غير صالحة.');
+    }
+
+    const ivBase64 = parts[0];
+    const ciphertextBase64 = parts[1];
+
+    const encoder = new TextEncoder();
+    const passwordBytes = encoder.encode(password);
+    const saltBytes = encoder.encode(email || 'whatsapp_secure_default_salt');
+
+    const baseKey = await window.crypto.subtle.importKey(
+      'raw',
+      passwordBytes,
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+
+    const aesKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: saltBytes,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      baseKey,
+      {
+        name: 'AES-GCM',
+        length: 256
+      },
+      false,
+      ['encrypt', 'decrypt']
+    );
+
+    const iv = base64ToArrayBuffer(ivBase64);
+    const ciphertext = base64ToArrayBuffer(ciphertextBase64);
+
+    const decryptedBuffer = await window.crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      aesKey,
+      ciphertext
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decryptedBuffer);
+  } catch (err) {
+    console.error('Password-derived decryption failed:', err);
+    throw err;
+  }
+}
+
 export { isSecureContext };

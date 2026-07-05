@@ -1,10 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Phone, PhoneOff, Video, Mic, MicOff, VideoOff } from 'lucide-react';
 
-export default function CallModal({ callInfo, onAccept, onReject, onEndCall }) {
+export default function CallModal({ callInfo, localStream, remoteStream, onAccept, onReject, onEndCall }) {
   const { isIncoming, callerName, callType, status } = callInfo;
   const [micActive, setMicActive] = useState(true);
   const [videoActive, setVideoActive] = useState(callType === 'video');
+
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+
+  // ربط تدفق الفيديو المحلي عند توفره
+  useEffect(() => {
+    if (localVideoRef.current && localStream && videoActive) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, videoActive, status]);
+
+  // ربط تدفق فيديو الطرف الآخر عند توفره
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, status]);
+
+  // كتم/إلغاء كتم الصوت المحلي
+  const toggleMic = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !micActive;
+      });
+      setMicActive(!micActive);
+    }
+  };
+
+  // تشغيل/إيقاف الفيديو المحلي
+  const toggleVideo = () => {
+    if (localStream) {
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = !videoActive;
+      });
+      setVideoActive(!videoActive);
+    }
+  };
 
   return (
     <div style={styles.overlay} className="animate-fade-in" id="call-modal">
@@ -41,15 +78,30 @@ export default function CallModal({ callInfo, onAccept, onReject, onEndCall }) {
           <div style={styles.videoGrid} id="video-streams">
             {/* كاميرا الطرف الآخر */}
             <div style={styles.remoteVideo}>
-              <div style={styles.videoPlaceholder}>
-                <Video size={36} color="var(--text-secondary)" />
-                <p style={{ fontSize: '12px', marginTop: '6px' }}>بث الطرف الآخر</p>
-              </div>
+              {remoteStream ? (
+                <video 
+                  ref={remoteVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              ) : (
+                <div style={styles.videoPlaceholder}>
+                  <Video size={36} color="var(--text-secondary)" />
+                  <p style={{ fontSize: '12px', marginTop: '6px' }}>بث الطرف الآخر</p>
+                </div>
+              )}
             </div>
             {/* كاميرتك المحلية (صغيرة) */}
             <div style={styles.localVideo}>
-              {videoActive ? (
-                <div style={styles.localVideoPlaceholder}>أنت</div>
+              {videoActive && localStream ? (
+                <video 
+                  ref={localVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
               ) : (
                 <VideoOff size={16} color="white" />
               )}
@@ -85,7 +137,7 @@ export default function CallModal({ callInfo, onAccept, onReject, onEndCall }) {
               {status === 'active' && (
                 <>
                   <button 
-                    onClick={() => setMicActive(!micActive)} 
+                    onClick={toggleMic} 
                     style={{ ...styles.controlBtn, backgroundColor: micActive ? 'rgba(255,255,255,0.1)' : 'rgba(234,0,56,0.2)' }}
                     id="mute-mic-btn"
                   >
@@ -93,7 +145,7 @@ export default function CallModal({ callInfo, onAccept, onReject, onEndCall }) {
                   </button>
                   {callType === 'video' && (
                     <button 
-                      onClick={() => setVideoActive(!videoActive)} 
+                      onClick={toggleVideo} 
                       style={{ ...styles.controlBtn, backgroundColor: videoActive ? 'rgba(255,255,255,0.1)' : 'rgba(234,0,56,0.2)' }}
                       id="toggle-video-btn"
                     >

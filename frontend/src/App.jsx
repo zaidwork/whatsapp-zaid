@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import CallModal from './components/CallModal';
+import { startRingtone, stopRingtone } from './ringtone';
 
 // جلب عنوان السيرفر من متغيرات البيئة أو التحويل التلقائي لرابط Render عند التشغيل أونلاين
 const getBackendUrl = () => {
@@ -49,6 +50,18 @@ export default function App() {
   });
 
   const [socketConnected, setSocketConnected] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+
+  // نغمة رنين المكالمات الصادرة والواردة
+  useEffect(() => {
+    if (callInfo.status === 'ringing') {
+      startRingtone(callInfo.isIncoming);
+    } else {
+      stopRingtone();
+    }
+    return () => stopRingtone();
+  }, [callInfo.status, callInfo.isIncoming]);
 
   // 1. استرجاع معلومات المستخدم الحالي
   useEffect(() => {
@@ -180,6 +193,7 @@ export default function App() {
       video: type === 'video'
     });
     localStreamRef.current = stream;
+    setLocalStream(stream); // حفظ التدفق المحلي لتمريره للـ Modal
     return stream;
   };
 
@@ -207,15 +221,19 @@ export default function App() {
 
     // استقبال الصوت/الفيديو من الطرف الآخر وتشغيله فوراً
     pc.ontrack = (event) => {
-      const remoteStream = event.streams[0];
-      if (!remoteAudioRef.current) {
-        const audio = new Audio();
-        audio.srcObject = remoteStream;
-        audio.autoplay = true;
-        audio.play().catch(e => console.warn("Autoplay blocked or failed:", e));
-        remoteAudioRef.current = audio;
-      } else {
-        remoteAudioRef.current.srcObject = remoteStream;
+      const rStream = event.streams[0];
+      setRemoteStream(rStream); // حفظ تدفق الطرف الآخر لتمريره لعنصر الفيديو
+      
+      if (type === 'audio') {
+        if (!remoteAudioRef.current) {
+          const audio = new Audio();
+          audio.srcObject = rStream;
+          audio.autoplay = true;
+          audio.play().catch(e => console.warn("Autoplay blocked or failed:", e));
+          remoteAudioRef.current = audio;
+        } else {
+          remoteAudioRef.current.srcObject = rStream;
+        }
       }
     };
 
@@ -338,6 +356,9 @@ export default function App() {
       remoteAudioRef.current = null;
     }
 
+    setLocalStream(null);
+    setRemoteStream(null);
+
     setCallInfo({
       isActive: false,
       isIncoming: false,
@@ -369,6 +390,8 @@ export default function App() {
       {callInfo.isActive && (
         <CallModal 
           callInfo={callInfo} 
+          localStream={localStream}
+          remoteStream={remoteStream}
           onAccept={acceptCall} 
           onReject={rejectCall} 
           onEndCall={endActiveCall}

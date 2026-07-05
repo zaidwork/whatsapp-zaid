@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateE2EEKeyPair, exportPrivateKey } from '../crypto';
+import { generateE2EEKeyPair, exportPrivateKey, encryptPrivateKeyWithPassword, decryptPrivateKeyWithPassword } from '../crypto';
 import { Shield, Lock, Mail, Phone, User, ArrowRightLeft } from 'lucide-react';
 
 export default function Auth({ onAuthSuccess, serverUrl }) {
@@ -54,6 +54,9 @@ export default function Auth({ onAuthSuccess, serverUrl }) {
         const exportedPrivate = await exportPrivateKey(keypair.privateKey);
         localStorage.setItem(`e2ee_private_${user.id}`, exportedPrivate);
 
+        // تشفير المفتاح الخاص بكلمة مرور المستخدم لرفعه للسيرفر وتخزينه كـ Backup للمزامنة
+        const encryptedPrivate = await encryptPrivateKeyWithPassword(keypair.privateKey, formData.password, formData.email);
+
         // توليد 10 مفاتيح إضافية للاستخدام لمرة واحدة (One-Time Prekeys) للرسائل أوفلاين
         const oneTimePrekeys = [];
         for (let i = 1; i <= 10; i++) {
@@ -64,7 +67,7 @@ export default function Auth({ onAuthSuccess, serverUrl }) {
           });
         }
 
-        // رفع المفاتيح العامة للسيرفر لتخزينها بجدول user_encryption_keys و user_one_time_prekeys
+        // رفع المفاتيح العامة والخاص المشفّر للسيرفر
         const keysRes = await fetch(`${serverUrl}/api/chat/keys/upload`, {
           method: 'POST',
           headers: {
@@ -73,9 +76,10 @@ export default function Auth({ onAuthSuccess, serverUrl }) {
           },
           body: JSON.stringify({
             public_identity_key: keypair.publicKeyJwk,
-            public_signed_prekey: keypair.publicKeyJwk, // نستخدم نفس المفتاح حالياً للتبسيط
+            public_signed_prekey: keypair.publicKeyJwk,
             prekey_signature: 'self_signed_signature',
-            one_time_prekeys: oneTimePrekeys
+            one_time_prekeys: oneTimePrekeys,
+            encrypted_private_key: encryptedPrivate
           })
         });
 
@@ -83,24 +87,40 @@ export default function Auth({ onAuthSuccess, serverUrl }) {
           console.warn('⚠️ فشل رفع مفاتيح التشفير العام للسيرفر، ولكن تم تسجيل الحساب.');
         }
       } else if (isLogin && !localPrivateKey) {
-        // إذا كان تسجيل دخول من جهاز جديد ولم يكن هناك مفتاح خاص مخزن
-        // لتسهيل تجربة الاستخدام، سنقوم بتوليد زوج مفاتيح جديد لهذا الجهاز ونرفعه للسيرفر
-        const keypair = await generateE2EEKeyPair();
-        const exportedPrivate = await exportPrivateKey(keypair.privateKey);
-        localStorage.setItem(`e2ee_private_${user.id}`, exportedPrivate);
+        // إذا كان تسجيل دخول من جهاز جديد ولم يكن هناك مفتاح خاص مخزن محلياً
+        if (user.encrypted_private_key) {
+          try {
+            // استرجاع وفك تشفير المفتاح الخاص المخزن بالسيرفر
+            const decryptedJwk = await decryptPrivateKeyWithPassword(user.encrypted_private_key, formData.password, formData.email);
+            localStorage.setItem(`e2ee_private_${user.id}`, decryptedJwk);
+            console.log('✅ تم استيراد وفك تشفير مفتاح الهوية بنجاح من النسخة الاحتياطية.');
+          } catch (decryptErr) {
+            console.error('Failed to decrypt imported private key:', decryptErr);
+            setError('فشل فك تشفير مفتاح الهوية الاحتياطي. يرجى التحقق من كلمة المرور.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          // إذا لم يكن للمستخدم مفتاح مشفر (حساب قديم مثلاً): نقوم بتوليد مفاتيح جديدة
+          const keypair = await generateE2EEKeyPair();
+          const exportedPrivate = await exportPrivateKey(keypair.privateKey);
+          localStorage.setItem(`e2ee_private_${user.id}`, exportedPrivate);
 
-        await fetch(`${serverUrl}/api/chat/keys/upload`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            public_identity_key: keypair.publicKeyJwk,
-            public_signed_prekey: keypair.publicKeyJwk,
-            prekey_signature: 'self_signed_signature'
-          })
-        });
+          const encryptedPrivate = await encryptPrivateKeyWithPassword(keypair.privateKey, formData.password, formData.email);
+          await fetch(`${serverUrl}/api/chat/keys/upload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              public_identity_key: keypair.publicKeyJwk,
+              public_signed_prekey: keypair.publicKeyJwk,
+              prekey_signature: 'self_signed_signature',
+              encrypted_private_key: encryptedPrivate
+            })
+          });
+        }
       }
 
       // إشعار التطبيق الرئيسي بنجاح التوثيق وحفظ التوكن

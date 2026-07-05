@@ -41,6 +41,14 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const activeChatRef = useRef(activeChat);
+  const myPrivateKeyRef = useRef(myPrivateKey);
+  const sharedKeysRef = useRef(sharedKeys);
+
+  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
+  useEffect(() => { myPrivateKeyRef.current = myPrivateKey; }, [myPrivateKey]);
+  useEffect(() => { sharedKeysRef.current = sharedKeys; }, [sharedKeys]);
+
   // 1. استرجاع مفتاح التشفير الخاص عند بدء التشغيل
   useEffect(() => {
     async function loadKey() {
@@ -66,10 +74,10 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
     // استلام رسالة جديدة
     const handleNewMessage = async (msg) => {
       // التحقق من وجود المفتاح المشترك المشتق
-      let sharedKey = sharedKeys[msg.sender_id];
+      let sharedKey = sharedKeysRef.current[msg.sender_id];
       
       // إذا لم يكن المفتاح مشتقاً ومحفوظاً، نقوم بجلبه واشتقاقه فوراً
-      if (!sharedKey && myPrivateKey) {
+      if (!sharedKey && myPrivateKeyRef.current) {
         try {
           sharedKey = await fetchAndDeriveKey(msg.sender_id);
         } catch (err) {
@@ -78,7 +86,9 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
       }
 
       let decryptedContent = msg.encrypted_content;
-      if (sharedKey) {
+      if (msg.message_type === 'call_log') {
+        decryptedContent = msg.encrypted_content;
+      } else if (sharedKey) {
         decryptedContent = await decryptMessage(sharedKey, msg.encrypted_content, msg.encryption_iv);
       } else {
         decryptedContent = '🔒 [رسالة مشفرة - مفتاح التشفير غير متوفر]';
@@ -90,7 +100,7 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
       };
 
       // إذا كانت الرسالة تخص المحادثة المفتوحة حالياً
-      if (activeChat && msg.conversation_id === activeChat.conversation_id) {
+      if (activeChatRef.current && msg.conversation_id === activeChatRef.current.conversation_id) {
         setMessages((prev) => [...prev, decryptedMsg]);
         scrollToBottom();
       }
@@ -140,7 +150,7 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
       socket.off('presence_change', handlePresenceChange);
       socket.off('typing_status', handleTypingStatus);
     };
-  }, [socket, activeChat, sharedKeys, myPrivateKey]);
+  }, [socket]);
 
   // تمرير تلقائي لأسفل المحادثة عند استلام رسائل جديدة أو انتهاء فك التشفير
   useEffect(() => {
@@ -299,7 +309,7 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
   // 9. جلب واشتقاق مفتاح التشفير للطرف الآخر
   const fetchAndDeriveKey = async (targetUserId) => {
     // التحقق أولاً من الكاش
-    if (sharedKeys[targetUserId]) return sharedKeys[targetUserId];
+    if (sharedKeysRef.current[targetUserId]) return sharedKeysRef.current[targetUserId];
 
     try {
       const res = await fetch(`${serverUrl}/api/chat/keys/get/${targetUserId}`, {
@@ -312,9 +322,10 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
       }
 
       // اشتقاق المفتاح المشترك عبر ECDH
-      const derived = await deriveSharedKey(myPrivateKey, data.public_identity_key);
+      const derived = await deriveSharedKey(myPrivateKeyRef.current, data.public_identity_key);
       
       // حفظ المفتاح في الكاش لتسريع العمليات القادمة
+      sharedKeysRef.current[targetUserId] = derived;
       setSharedKeys(prev => ({
         ...prev,
         [targetUserId]: derived
@@ -347,6 +358,13 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
         // فك تشفير الرسائل السابقة
         const decryptedList = [];
         for (const msg of data.messages) {
+          if (msg.message_type === 'call_log') {
+            decryptedList.push({
+              ...msg,
+              decrypted_content: msg.encrypted_content
+            });
+            continue;
+          }
           try {
             const dec = await decryptMessage(sharedKey, msg.encrypted_content, msg.encryption_iv);
             decryptedList.push({
@@ -897,7 +915,13 @@ export default function Dashboard({ token, myUser, socket, socketConnected, serv
                     <div 
                       className={`msg-bubble ${isMyMessage ? 'msg-incoming' : 'msg-outgoing'}`}
                     >
-                      {msg.message_type === 'media' ? (
+                      {msg.message_type === 'call_log' ? (
+                        /* رسائل سجل المكالمات */
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff9f1c', fontWeight: '500' }}>
+                          <Phone size={16} />
+                          <span>{msg.decrypted_content}</span>
+                        </div>
+                      ) : msg.message_type === 'media' ? (
                         /* إذا كان الملف وسائط (صورة مشفرة مثلاً) */
                         msg.decrypted_content.startsWith('data:image') ? (
                           <img src={msg.decrypted_content} alt="مرفق مشفر" style={styles.mediaImage} />
