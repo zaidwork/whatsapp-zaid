@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Phone, PhoneOff, Video, Mic, MicOff, VideoOff, Volume2, VolumeX } from 'lucide-react';
 
-export default function CallModal({ callInfo, localStream, remoteStream, onAccept, onReject, onEndCall }) {
+export default function CallModal({ 
+  callInfo, 
+  localStream, 
+  remoteStream, 
+  micActive, 
+  videoActive, 
+  onToggleMic, 
+  onToggleVideo, 
+  onAccept, 
+  onReject, 
+  onEndCall 
+}) {
   const { isIncoming, callerName, callType, status } = callInfo;
-  const [micActive, setMicActive] = useState(true);
-  const [videoActive, setVideoActive] = useState(callType === 'video');
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -22,26 +31,6 @@ export default function CallModal({ callInfo, localStream, remoteStream, onAccep
       remoteVideoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream, status]);
-
-  // كتم/إلغاء كتم الصوت المحلي
-  const toggleMic = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach(track => {
-        track.enabled = !micActive;
-      });
-      setMicActive(!micActive);
-    }
-  };
-
-  // تشغيل/إيقاف الفيديو المحلي
-  const toggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach(track => {
-        track.enabled = !videoActive;
-      });
-      setVideoActive(!videoActive);
-    }
-  };
 
   const [speakerActive, setSpeakerActive] = useState(false);
 
@@ -161,7 +150,7 @@ export default function CallModal({ callInfo, localStream, remoteStream, onAccep
               {status === 'active' && (
                 <>
                   <button 
-                    onClick={toggleMic} 
+                    onClick={onToggleMic} 
                     style={{ ...styles.controlBtn, backgroundColor: micActive ? 'rgba(255,255,255,0.1)' : 'rgba(234,0,56,0.2)' }}
                     id="mute-mic-btn"
                     title={micActive ? "كتم الميكروفون" : "تشغيل الميكروفون"}
@@ -180,7 +169,7 @@ export default function CallModal({ callInfo, localStream, remoteStream, onAccep
 
                   {callType === 'video' && (
                     <button 
-                      onClick={toggleVideo} 
+                      onClick={onToggleVideo} 
                       style={{ ...styles.controlBtn, backgroundColor: videoActive ? 'rgba(255,255,255,0.1)' : 'rgba(234,0,56,0.2)' }}
                       id="toggle-video-btn"
                       title={videoActive ? "إيقاف الكاميرا" : "تشغيل الكاميرا"}

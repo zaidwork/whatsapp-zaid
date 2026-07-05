@@ -52,6 +52,30 @@ export default function App() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [localAudioActive, setLocalAudioActive] = useState(true);
+  const [localVideoActive, setLocalVideoActive] = useState(true);
+
+  // كتم/تفعيل الصوت لتدفق المكالمة المحلي من الـ Core
+  const toggleLocalAudio = () => {
+    if (localStreamRef.current) {
+      const nextState = !localAudioActive;
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = nextState;
+      });
+      setLocalAudioActive(nextState);
+    }
+  };
+
+  // كتم/تفعيل الكاميرا لتدفق المكالمة المحلي من الـ Core
+  const toggleLocalVideo = () => {
+    if (localStreamRef.current) {
+      const nextState = !localVideoActive;
+      localStreamRef.current.getVideoTracks().forEach(track => {
+        track.enabled = nextState;
+      });
+      setLocalVideoActive(nextState);
+    }
+  };
 
   // نغمة رنين المكالمات الصادرة والواردة
   useEffect(() => {
@@ -183,14 +207,22 @@ export default function App() {
     setUser(null);
   };
 
-  // 3. تشغيل تدفق الصوت/الفيديو المحلي (GetUserMedia)
+  // 3. تشغيل تدفق الصوت/الفيديو المحلي (GetUserMedia) مع تفعيل تقنيات تنقية وتوضيح الصوت الحديثة
   const startLocalStream = async (type) => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("SECURE_CONTEXT_REQUIRED");
     }
+    const audioConstraints = {
+      echoCancellation: true, // إلغاء صدى الصوت التفاعلي
+      noiseSuppression: true, // كتم وإلغاء الضجيج والمحيط الخلفي
+      autoGainControl: true, // التحكم التلقائي ورفع جودة التوازن الصوتي
+      sampleRate: 48000, // معدل ترميز عالي النقاء
+      channelCount: 1 // صوت أحادي لتفادي تداخل الترددات
+    };
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+        audio: audioConstraints,
         video: type === 'video'
       });
       localStreamRef.current = stream;
@@ -202,7 +234,7 @@ export default function App() {
         console.warn("Camera fallback: No camera found or access blocked. Trying audio only.");
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
+            audio: audioConstraints,
             video: false
           });
           localStreamRef.current = stream;
@@ -371,6 +403,8 @@ export default function App() {
 
     setLocalStream(null);
     setRemoteStream(null);
+    setLocalAudioActive(true);
+    setLocalVideoActive(true);
 
     setCallInfo({
       isActive: false,
@@ -408,6 +442,10 @@ export default function App() {
           callInfo={callInfo} 
           localStream={localStream}
           remoteStream={remoteStream}
+          micActive={localAudioActive}
+          videoActive={localVideoActive}
+          onToggleMic={toggleLocalAudio}
+          onToggleVideo={toggleLocalVideo}
           onAccept={acceptCall} 
           onReject={rejectCall} 
           onEndCall={endActiveCall}
